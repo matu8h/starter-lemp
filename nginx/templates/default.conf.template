@@ -1,0 +1,32 @@
+server {
+    listen 80;
+    root /app;
+    index index.php index.html;
+    server_name localhost;
+    error_log  /var/log/nginx/error.log;
+    access_log /var/log/nginx/access.log;
+
+    client_header_timeout 999999;
+    client_body_timeout 999999;
+    fastcgi_read_timeout 999999;
+    client_max_body_size 32m;
+    fastcgi_buffers 8 128k;
+    fastcgi_buffer_size 128k;
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass "${COMPOSE_PROJECT_NAME}-php:9000";
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    if (!-e $request_filename) {
+        rewrite /wp-admin$ $scheme://$host$uri/ permanent;
+        rewrite ^(/[^/]+)?(/wp-.*) $2 last;
+        rewrite ^(/[^/]+)?(/.*.php) $2 last;
+    }
+}
+

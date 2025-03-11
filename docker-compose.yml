@@ -1,68 +1,63 @@
-version: '2.1'
-
 services:
   mysql:
+    platform: linux/x86_64
     image: mysql:8.0
-    command: --default-authentication-plugin=mysql_native_password
-    container_name: starterstack-mysql
+    container_name: ${COMPOSE_PROJECT_NAME}-mysql
     restart: always
     ports:
-      - "24301:3306"
+      - "${DB_PORT:-3306}:3306"
     volumes:
-      - starterstack-datavolume:/var/lib/mysql
+      - mysql_data:/var/lib/mysql  # No manual naming needed, auto-prefixed by COMPOSE_PROJECT_NAME
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
     environment:
       MYSQL_ROOT_PASSWORD: 12345
-      MYSQL_DATABASE: starterstack
-      MYSQL_USER: starterstack
+      MYSQL_DATABASE: ${COMPOSE_PROJECT_NAME}
+      MYSQL_USER: ${COMPOSE_PROJECT_NAME}
       MYSQL_PASSWORD: your_secure_password
+
   nginx:
-    container_name: starterstack-nginx
-    build: ./nginx
-    image: nginx:stable-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-nginx
+    environment:
+      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}
+    image: nginx:alpine
     volumes:
-        - ./app:/app
+      - ./app:/app
+      - ./nginx/templates:/etc/nginx/templates:rw,cached
     depends_on:
       mysql:
         condition: service_healthy
     ports:
       - "80"
     labels:
-      - "traefik.frontend.rule=Host:starterstack.local"
+      - "traefik.frontend.rule=Host:${COMPOSE_PROJECT_NAME}.my.local"
       - "traefik.port=80"
+
   php:
     build: .
-    container_name: starterstack-php
+    container_name: ${COMPOSE_PROJECT_NAME}-php
     environment:
-      DB_NAME: starterstack
-      DB_USER: starterstack
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+      DB_NAME: ${COMPOSE_PROJECT_NAME}
+      DB_USER: ${COMPOSE_PROJECT_NAME}
       DB_PASSWORD: your_secure_password
-      DB_HOST: starterstack-mysql
-      WP_SITEURL: "https://starterstack.local"
-      WP_DEBUG: 1
-      WP_DEBUG_DISPLAY: 1
-      WP_DEBUG_LOG: 1
-      WP_CACHE_KEY_SALT: "starterstack"
-      WP_REDIS_HOST: redis
-      WP_REDIS_PORT: 6379
+      DB_HOST: ${COMPOSE_PROJECT_NAME}-mysql
+      WP_SITEDOMAIN: "${COMPOSE_PROJECT_NAME}.my.local"
+      WP_SITEURL: "https://${COMPOSE_PROJECT_NAME}.my.local"
+      WP_DEBUG: "1"
+      WP_DEBUG_DISPLAY: "1"
+      WP_DEBUG_LOG: "1"
     volumes:
-        - ./app:/app
+      - ./app:/app
     ports:
-        - "9000:9000"
-  redis:
-      image: redis:alpine
-      container_name: starterstack-redis
-      restart: always
-      ports:
-          - "6379:6379"
+      - "${PHP_PORT:-9000}:9000"
 
 volumes:
-  starterstack-datavolume:
+  mysql_data:  # This will be automatically prefixed by COMPOSE_PROJECT_NAME
 
 networks:
   default:
-    external:
-      name: traefik_hosts
+    name: traefik_hosts
+    external: true

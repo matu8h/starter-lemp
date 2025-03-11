@@ -1,4 +1,4 @@
-FROM php:7.3-fpm-alpine
+FROM php:8.3-fpm-alpine
 RUN apk add --no-cache \
         bash \
         sed
@@ -11,8 +11,8 @@ RUN set -ex; \
         libzip-dev \
     ; \
     \
-    docker-php-ext-configure gd --with-png-dir=/usr --with-jpeg-dir=/usr; \
-    docker-php-ext-install gd mysqli opcache zip; \
+    docker-php-ext-configure gd; \
+    docker-php-ext-install gd mysqli opcache zip bcmath; \
     \
     runDeps="$( \
         scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
@@ -23,9 +23,10 @@ RUN set -ex; \
     apk add --virtual .wordpress-phpexts-rundeps $runDeps; \
     apk del .build-deps
 
-RUN apk --update --no-cache add autoconf g++ make && \
-    # pecl install -f xdebug-2.7.0beta1 && \
-    pecl install -f redis && \
-    #docker-php-ext-enable xdebug && \
-    docker-php-ext-enable redis && \
-    apk del --purge autoconf g++ make
+#RUN apk --update --no-cache add autoconf g++ make && \
+    #pecl install -f xdebug-2.7.0 && \
+    #pecl install -f redis && \
+   # docker-php-ext-enable php7-intl  && \
+    #docker-php-ext-enable redis && \
+   # apk del --purge autoconf g++ make
+
